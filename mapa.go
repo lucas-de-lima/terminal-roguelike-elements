@@ -33,10 +33,10 @@ type Biome struct {
 }
 
 var Biomes = []Biome{
-	{"Masmorra Sombria", "🧱", "🟣", "O Miasma corrói sua pele!", "#333333", "#A020F0"},
-	{"Floresta Anciã", "🌲", "🌺", "O pólen tóxico te sufoca!", "#228B22", "#FF1493"},
-	{"Caverna Vulcânica", "⛰️", "🔥", "A lava derrete suas botas!", "#8B0000", "#FF4500"},
-	{"Pico Congelado", "🧊", "🌨️", "O frio extremo drena sua vida!", "#B0E0E6", "#00FFFF"},
+	{"Masmorra Sombria", "🧱 ", "🟣 ", "O Miasma corrói sua pele!", "#333333", "#A020F0"},
+	{"Floresta Anciã", "🌲 ", "🌺 ", "O pólen tóxico te sufoca!", "#228B22", "#FF1493"},
+	{"Caverna Vulcânica", "⛰️ ", "🔥 ", "A lava derrete suas botas!", "#8B0000", "#FF4500"},
+	{"Pico Congelado", "🧊 ", "🌨️ ", "O frio extremo drena sua vida!", "#B0E0E6", "#00FFFF"},
 }
 
 func generateFloor(m *model) {
@@ -76,39 +76,81 @@ func generateFloor(m *model) {
 	}
 	m.playerX, m.playerY = sx, sy
 
-	// 5. Baús
-	for i := 0; i < 10; i++ {
-		cx, cy := rand.Intn(MapW-2)+1, rand.Intn(MapH-2)+1
-		if newGrid[cy][cx] != TileWall {
-			newGrid[cy][cx] = TileChest
+	// ==========================================
+	// NOVO: Algoritmo Flood Fill para spawn seguro
+	// ==========================================
+	var reachable [MapH][MapW]bool
+	queue := []struct{ x, y int }{{sx, sy}}
+	reachable[sy][sx] = true
+
+	dirs := []struct{ dx, dy int }{{0, 1}, {1, 0}, {0, -1}, {-1, 0}}
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
+
+		for _, d := range dirs {
+			nx, ny := curr.x+d.dx, curr.y+d.dy
+			if nx >= 0 && nx < MapW && ny >= 0 && ny < MapH {
+				if newGrid[ny][nx] != TileWall && !reachable[ny][nx] {
+					reachable[ny][nx] = true
+					queue = append(queue, struct{ x, y int }{nx, ny})
+				}
+			}
 		}
+	}
+
+	type Coord struct{ x, y int }
+	validSpawns := []Coord{}
+	for y := 0; y < MapH; y++ {
+		for x := 0; x < MapW; x++ {
+			if reachable[y][x] && newGrid[y][x] != TileWall && !(x == sx && y == sy) {
+				validSpawns = append(validSpawns, Coord{x, y})
+			}
+		}
+	}
+
+	rand.Shuffle(len(validSpawns), func(i, j int) {
+		validSpawns[i], validSpawns[j] = validSpawns[j], validSpawns[i]
+	})
+
+	// 5. Baús usando coordenadas alcançáveis
+	spawnIndex := 0
+	for i := 0; i < 10 && spawnIndex < len(validSpawns); i++ {
+		c := validSpawns[spawnIndex]
+		newGrid[c.y][c.x] = TileChest
+		spawnIndex++
 	}
 
 	// 6. Inimigos Escalonados pelo Andar!
 	m.enemies = []*Character{}
 
 	// 1. Spawna 1 Boss (Garantido)
-	bx, by := rand.Intn(MapW-2)+1, rand.Intn(MapH-2)+1
-	boss := generateEnemy(m.player.Stats.Level+m.floor, false, TypeBoss)
-	boss.X, boss.Y = bx, by
-	m.enemies = append(m.enemies, boss)
+	if spawnIndex < len(validSpawns) {
+		c := validSpawns[spawnIndex]
+		boss := generateEnemy(m.player.Stats.Level+m.floor, false, TypeBoss)
+		boss.X, boss.Y = c.x, c.y
+		m.enemies = append(m.enemies, boss)
+		spawnIndex++
+	}
 
 	// 2. Spawna Mini-Bosses (1 a cada 2 andares)
-	for i := 0; i < m.floor/2; i++ {
-		mx, my := rand.Intn(MapW-2)+1, rand.Intn(MapH-2)+1
+	for i := 0; i < m.floor/2 && spawnIndex < len(validSpawns); i++ {
+		c := validSpawns[spawnIndex]
 		mini := generateEnemy(m.player.Stats.Level+m.floor, false, TypeMiniBoss)
-		mini.X, mini.Y = mx, my
+		mini.X, mini.Y = c.x, c.y
 		m.enemies = append(m.enemies, mini)
+		spawnIndex++
 	}
 
 	// 3. Spawna o resto dos inimigos comuns
 	qtdInimigos := 20 + (m.floor * 4)
-	for i := 0; i < qtdInimigos; i++ {
-		ex, ey := rand.Intn(MapW-2)+1, rand.Intn(MapH-2)+1
-		isMutant := (newGrid[ey][ex] == TileMiasma)
+	for i := 0; i < qtdInimigos && spawnIndex < len(validSpawns); i++ {
+		c := validSpawns[spawnIndex]
+		isMutant := (newGrid[c.y][c.x] == TileMiasma)
 		enemy := generateEnemy(m.player.Stats.Level+m.floor, isMutant, TypeNormal)
-		enemy.X, enemy.Y = ex, ey
+		enemy.X, enemy.Y = c.x, c.y
 		m.enemies = append(m.enemies, enemy)
+		spawnIndex++
 	}
 
 	m.grid = newGrid

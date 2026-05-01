@@ -15,11 +15,11 @@ const (
 	EmojiMage    = "🧙"
 	EmojiRogue   = "🥷"
 	EmojiEnemy   = "👹"
-	EmojiWall    = "🧱"
+	EmojiWall    = "🧱 "
 	EmojiFloor   = " . "
-	EmojiChest   = "📦"
-	EmojiMiasma  = "🟣"
-	EmojiPortal  = "🌀"
+	EmojiChest   = "📦 "
+	EmojiMiasma  = "🟣 "
+	EmojiPortal  = "🌀 "
 )
 
 var (
