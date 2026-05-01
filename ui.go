@@ -54,18 +54,30 @@ func progressBar(width int, current, total float64, color lipgloss.Color) string
 }
 
 func (m model) View() string {
-	if m.state == StateMenuClass {
+	if m.state == StateMainMenu {
 		s := "\n" + styleTitle.Render(" ⚔️  BEM-VINDO AO TERMINAL RPG ⚔️ ") + "\n\n"
-		s += " Escolha sua classe (W/S para mover, ENTER para selecionar):\n\n"
 
-		for i, class := range AvailableClasses {
-			cursor := "  "
-			if m.classCursor == i {
-				cursor = styleCursor.Render("> ")
+		if m.menuStep == 0 {
+			s += " Passo 1: Escolha sua vocação (W/S para mover, ENTER para confirmar):\n\n"
+			for i, class := range AvailableClasses {
+				cursor := "  "
+				if m.menuCursor == i {
+					cursor = styleCursor.Render("> ")
+				}
+				s += fmt.Sprintf("%s %s %s\n     HP: %.0f | FOR: %.0f | INT: %.0f\n     %s\n\n",
+					cursor, class.Symbol, class.Name, class.HP, class.Str, class.Int, class.Desc)
 			}
-			row := fmt.Sprintf("%s %s %s\n     HP: %.0f | FOR: %.0f | INT: %.0f\n     %s\n",
-				cursor, class.Symbol, class.Name, class.HP, class.Str, class.Int, class.Desc)
-			s += row + "\n"
+		} else {
+			s += fmt.Sprintf(" Vocação: %s %s\n", AvailableClasses[m.chosenClass].Symbol, AvailableClasses[m.chosenClass].Name)
+			s += " Passo 2: Escolha sua afinidade elemental:\n\n"
+			for i, elem := range AvailableElements {
+				cursor := "  "
+				if m.menuCursor == i {
+					cursor = styleCursor.Render("> ")
+				}
+				s += fmt.Sprintf("%s %s %s\n", cursor, elem.Symbol, elem.Name)
+			}
+			s += "\n (Pressione ESC para voltar)"
 		}
 		return s
 	}

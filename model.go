@@ -7,8 +7,7 @@ import (
 type GameState int
 
 const (
-	StateMenuClass GameState = iota
-	StateMenuElement
+	StateMainMenu GameState = iota
 	StateMap
 	StateCombat
 	StateLevelUp
@@ -16,23 +15,24 @@ const (
 )
 
 type model struct {
-	state         GameState
-	classCursor   int
-	elementCursor int
-	grid          [MapH][MapW]rune
-	playerX       int
-	playerY       int
-	player        *Character
-	enemy         *Character
-	log           string
-	levelOptions  []Skill
+	state        GameState
+	menuCursor   int
+	menuStep     int // 0 para Classe, 1 para Elemento
+	chosenClass  int // Salva a classe escolhida na primeira etapa
+	grid         [MapH][MapW]rune
+	playerX      int
+	playerY      int
+	player       *Character
+	enemy        *Character
+	log          string
+	levelOptions []Skill
 }
 
 func initialModel() model {
 	return model{
-		state:         StateMenuClass,
-		classCursor:   0,
-		elementCursor: 0,
+		state:      StateMainMenu,
+		menuCursor: 0,
+		menuStep:   0,
 	}
 }
 
@@ -46,24 +46,45 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch m.state {
-		case StateMenuClass:
+		case StateMainMenu:
+			// Define o tamanho da lista baseada no passo atual
+			maxCursor := len(AvailableClasses)
+			if m.menuStep == 1 {
+				maxCursor = len(AvailableElements)
+			}
+
 			switch msg.String() {
 			case "up", "w":
-				m.classCursor--
-				if m.classCursor < 0 {
-					m.classCursor = len(AvailableClasses) - 1
+				m.menuCursor--
+				if m.menuCursor < 0 {
+					m.menuCursor = maxCursor - 1
 				}
+				return m, nil
 			case "down", "s":
-				m.classCursor++
-				if m.classCursor >= len(AvailableClasses) {
-					m.classCursor = 0
+				m.menuCursor++
+				if m.menuCursor >= maxCursor {
+					m.menuCursor = 0
 				}
+				return m, nil
 			case "enter", " ":
-				// TODO: Go to StateMenuElement
-				return startGame(m.classCursor, 0), nil // Placeholder for elementIndex
+				if m.menuStep == 0 {
+					// Passo 1 Concluído: Salvou a classe, vai pro elemento
+					m.chosenClass = m.menuCursor
+					m.menuStep = 1
+					m.menuCursor = 0 // Reseta o cursor pro novo menu
+					return m, nil
+				} else {
+					// Passo 2 Concluído: Inicia o jogo!
+					return startGame(m.chosenClass, m.menuCursor), nil
+				}
+			case "esc":
+				if m.menuStep == 1 {
+					// Permite voltar para a seleção de classe
+					m.menuStep = 0
+					m.menuCursor = m.chosenClass
+					return m, nil
+				}
 			}
-		case StateMenuElement:
-			// TODO: Implement element selection
 		case StateMap:
 			return updateMap(m, msg)
 		case StateCombat:

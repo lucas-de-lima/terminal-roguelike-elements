@@ -6,6 +6,63 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// --- ELEMENTOS ---
+const (
+	ElemFire  = "Fogo"
+	ElemWind  = "Vento"
+	ElemLight = "Raio"
+	ElemEarth = "Terra"
+	ElemWater = "Água"
+	ElemNone  = "Neutro"
+)
+
+// Estrutura para exibir no menu
+type ElementDef struct {
+	Name   string
+	Symbol string
+}
+
+var AvailableElements = []ElementDef{
+	{ElemFire, "🔥"},
+	{ElemWater, "💧"},
+	{ElemWind, "🍃"},
+	{ElemEarth, "🪨"},
+	{ElemLight, "⚡"},
+}
+
+// Lógica de Vantagem: Retorna o multiplicador de dano
+func getElementalMultiplier(atkElem, defElem string) float64 {
+	if atkElem == defElem || atkElem == ElemNone || defElem == ElemNone {
+		return 1.0 // Dano normal
+	}
+
+	// Quem ganha de quem (+30% de dano)
+	strongAgainst := map[string]string{
+		ElemFire:  ElemWind,
+		ElemWind:  ElemLight,
+		ElemLight: ElemEarth,
+		ElemEarth: ElemWater,
+		ElemWater: ElemFire,
+	}
+
+	// Quem perde pra quem (-30% de dano)
+	weakAgainst := map[string]string{
+		ElemWind:  ElemFire,
+		ElemLight: ElemWind,
+		ElemEarth: ElemLight,
+		ElemWater: ElemEarth,
+		ElemFire:  ElemWater,
+	}
+
+	if strongAgainst[atkElem] == defElem {
+		return 1.3
+	} else if weakAgainst[atkElem] == defElem {
+		return 0.7
+	}
+
+	return 1.0 // Se não interagir, dano normal
+}
+
 type Stats struct {
 	MaxHP, HP  float64
 	Str, Int   float64

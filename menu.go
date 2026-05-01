@@ -8,7 +8,7 @@ func startGame(classIndex, elementIndex int) model {
 	m := model{state: StateMap}
 	c := AvailableClasses[classIndex]
 
-	element := "Fire" // Placeholder, based on elementIndex
+	element := AvailableElements[elementIndex].Name
 
 	m.player = &Character{
 		Name:    c.Name,
