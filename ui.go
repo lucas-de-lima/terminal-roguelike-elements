@@ -19,6 +19,7 @@ const (
 	EmojiFloor   = " . "
 	EmojiChest   = "📦"
 	EmojiMiasma  = "🟣"
+	EmojiPortal  = "🌀"
 )
 
 var (
@@ -35,6 +36,7 @@ var (
 	// Novos estilos
 	styleChest  = lipgloss.NewStyle()
 	styleMiasma = lipgloss.NewStyle().Foreground(lipgloss.Color("#A020F0")) // Roxo Tóxico
+	stylePortal = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFFF")).Bold(true)
 
 	styleHUD = lipgloss.NewStyle().
 			BorderStyle(lipgloss.RoundedBorder()).
@@ -129,11 +131,14 @@ func (m model) View() string {
 	}
 
 	// --- HUD ---
-	hudText := fmt.Sprintf(" %s %s (%s) Nv.%d | HP %s %.0f/%.0f | XP %s%s",
-		m.player.Symbol, m.player.Name, m.player.Element, m.player.Stats.Level,
+	hudText := fmt.Sprintf(" Andar %d | %s %s (%s) Nv.%d | HP %s %.0f/%.0f | XP %s%s",
+		m.floor, m.player.Symbol, m.player.Name, m.player.Element, m.player.Stats.Level,
 		hpBar, m.player.Stats.HP, m.player.Stats.MaxHP, xpBar, trackerText)
 
 	view := styleHUD.Render(hudText) + "\n"
+
+	currentFloorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.currentBiome.ColorFloor))
+	currentHazardStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.currentBiome.ColorHazard))
 
 	if m.state == StateMap {
 		camX, camY := m.playerX-(ViewW/2), m.playerY-(ViewH/2)
@@ -166,19 +171,21 @@ func (m model) View() string {
 						line += stylePlayer.Render(m.player.Symbol + " ")
 					} else if hasEnemy {
 						if isMutant {
-							line += styleMiasma.Render(emoji + " ")
+							line += currentHazardStyle.Render(emoji + " ")
 						} else {
 							line += styleEnemy.Render(emoji + " ")
 						}
 						// 2. Se não houver entidade, renderiza o terreno (grid)
 					} else if m.grid[wy][wx] == TileWall {
-						line += styleWall.Render(EmojiWall)
+						line += styleWall.Render(m.currentBiome.EmojiWall)
 					} else if m.grid[wy][wx] == TileMiasma {
-						line += styleMiasma.Render(EmojiMiasma + " ")
+						line += currentHazardStyle.Render(m.currentBiome.EmojiHazard + " ")
 					} else if m.grid[wy][wx] == TileChest {
 						line += styleChest.Render(EmojiChest + " ")
+					} else if m.grid[wy][wx] == TilePortal {
+						line += stylePortal.Render(EmojiPortal + " ")
 					} else {
-						line += styleFloor.Render(EmojiFloor)
+						line += currentFloorStyle.Render(" . ")
 					}
 				}
 			}

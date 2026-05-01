@@ -18,8 +18,10 @@ const (
 type model struct {
 	state            GameState
 	menuCursor       int
-	menuStep         int // 0 para Classe, 1 para Elemento
-	chosenClass      int // Salva a classe escolhida na primeira etapa
+	menuStep         int   // 0 para Classe, 1 para Elemento
+	chosenClass      int   // Salva a classe escolhida na primeira etapa
+	floor            int   // Controla a profundidade (Andar atual)
+	currentBiome     Biome // Guarda o bioma do andar
 	grid             [MapH][MapW]rune
 	enemies          []*Character
 	totalEnemies     int // Guarda o total inicial para a Bússola

@@ -75,6 +75,13 @@ func updateCombat(m model, msg tea.KeyMsg) (model, tea.Cmd) {
 		xp := 25.0 * m.enemy.Stats.Str
 		m.player.Stats.XP += xp
 		m.log = fmt.Sprintf("🏆 Venceu! +%.0f XP", xp)
+
+		// GATILHO DO PORTAL
+		if len(m.enemies) == 0 {
+			m.grid[m.playerY][m.playerX] = TilePortal
+			m.log += " 🌀 A área está limpa! Um PORTAL se abriu sob você."
+		}
+
 		return checkLevelUp(m), nil
 	}
 
