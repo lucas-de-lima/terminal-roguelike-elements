@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,24 +26,38 @@ var EnemyPool = []EnemyDef{
 func generateEnemy(playerLvl int, isMutant bool) *Character {
 	lvl := playerLvl
 	baseEnemy := EnemyPool[rand.Intn(len(EnemyPool))]
-
 	nome := baseEnemy.Name
-	elemento := baseEnemy.Element // <--- MANTÉM O ELEMENTO NATURAL!
+	elemento := baseEnemy.Element
 
-	// Mutantes ganham nível, mas continuam vulneráveis às fraquezas normais
 	if isMutant {
-		lvl += 2
+		lvl += 3 // Mutantes ganham 3 níveis de cara!
 		nome = nome + " (Tóxico)"
 	}
 
-	scale := float64(lvl)
-	hp := 20.0 * (1 + scale*0.3)
+	// Curva de Dificuldade Exponencial!
+	// A cada nível, os monstros ficam 15% mais parrudos.
+	scale := float64(lvl - 1)
+	hp := 25.0 * math.Pow(1.15, scale)
+	str := 3.0 * math.Pow(1.15, scale)
+
+	// O BUFF DO MIASMA: Inimigos ali dentro são mini-chefes
+	if isMutant {
+		hp *= 1.8  // 80% mais vida
+		str *= 1.4 // 40% mais dano
+	}
 
 	return &Character{
 		Name:    nome,
 		Symbol:  baseEnemy.Symbol,
 		Element: elemento,
-		Stats:   Stats{MaxHP: hp, HP: hp, Str: 2.0 * (1 + scale*0.2)},
+		Stats: Stats{
+			MaxHP:          hp,
+			HP:             hp,
+			Str:            str,
+			Int:            str,
+			CritChance:     0.05,
+			CritMultiplier: 1.5,
+		},
 	}
 }
 
@@ -63,18 +78,30 @@ func updateCombat(m model, msg tea.KeyMsg) (model, tea.Cmd) {
 		return checkLevelUp(m), nil
 	}
 
-	// Turno do Inimigo
-	enemyElemMult := getElementalMultiplier(m.enemy.Element, m.player.Element)
-	dmg := m.enemy.Stats.Str * (0.8 + rand.Float64()*0.4) * enemyElemMult
+	// Turno do Inimigo (usando sistema de crítico também)
+	baseDmg := m.enemy.Stats.Str * (0.8 + rand.Float64()*0.4)
+	elemMult := getElementalMultiplier(m.enemy.Element, m.player.Element)
 
-	m.player.Stats.HP -= dmg
-
-	feedbackInimigo := ""
-	if enemyElemMult > 1.0 {
-		feedbackInimigo = " (Dano Crítico!)"
+	isCrit := rand.Float64() < m.enemy.Stats.CritChance
+	critMult := 1.0
+	critText := ""
+	if isCrit {
+		critMult = m.enemy.Stats.CritMultiplier
+		critText = " ⚡CRÍTICO!"
 	}
 
-	m.log += fmt.Sprintf("\n💀 %s atacou: -%.0f HP%s", m.enemy.Symbol, dmg, feedbackInimigo)
+	finalDmg := baseDmg * elemMult * critMult
+	m.player.Stats.HP -= finalDmg
+
+	feedbackInimigo := ""
+	if elemMult > 1.0 {
+		feedbackInimigo = " (Super Efetivo!)"
+	}
+	if elemMult < 1.0 {
+		feedbackInimigo = " (Resistido)"
+	}
+
+	m.log += fmt.Sprintf("\n💀 %s atacou: -%.0f HP%s%s", m.enemy.Symbol, finalDmg, critText, feedbackInimigo)
 
 	if m.player.Stats.HP <= 0 {
 		m.state = StateGameOver

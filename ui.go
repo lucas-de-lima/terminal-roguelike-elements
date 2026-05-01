@@ -85,9 +85,53 @@ func (m model) View() string {
 	hpBar := progressBar(15, m.player.Stats.HP, m.player.Stats.MaxHP, lipgloss.Color("#FF0055"))
 	xpBar := progressBar(10, m.player.Stats.XP, m.player.Stats.NextXP, lipgloss.Color("#AF87FF"))
 
-	hudText := fmt.Sprintf(" %s %s (%s) Nv.%d | HP %s %.0f/%.0f | XP %s",
+	// --- CÁLCULO DA BÚSSOLA ---
+	trackerText := ""
+	limiteBussola := int(math.Ceil(float64(m.totalEnemies) * 0.10)) // Calcula 10% (arredondado pra cima)
+
+	if len(m.enemies) > 0 && (len(m.enemies) <= limiteBussola || len(m.enemies) <= 5) {
+		minDist := 9999.0
+		var closest *Character
+		for _, e := range m.enemies {
+			// Distância Euclidiana
+			d := math.Hypot(float64(e.X-m.playerX), float64(e.Y-m.playerY))
+			if d < minDist {
+				minDist = d
+				closest = e
+			}
+		}
+
+		// Calcula o ângulo em Graus
+		dx := float64(closest.X - m.playerX)
+		dy := float64(closest.Y - m.playerY)
+		angle := math.Atan2(dy, dx) * 180 / math.Pi
+
+		arrow := ""
+		switch {
+		case angle > -22.5 && angle <= 22.5:
+			arrow = "➡️"
+		case angle > 22.5 && angle <= 67.5:
+			arrow = "↘️"
+		case angle > 67.5 && angle <= 112.5:
+			arrow = "⬇️"
+		case angle > 112.5 && angle <= 157.5:
+			arrow = "↙️"
+		case angle > 157.5 || angle <= -157.5:
+			arrow = "⬅️"
+		case angle > -157.5 && angle <= -112.5:
+			arrow = "↖️"
+		case angle > -112.5 && angle <= -67.5:
+			arrow = "⬆️"
+		case angle > -67.5 && angle <= -22.5:
+			arrow = "↗️"
+		}
+		trackerText = fmt.Sprintf(" | 🧭 Presa a %d passos %s", int(minDist), arrow)
+	}
+
+	// --- HUD ---
+	hudText := fmt.Sprintf(" %s %s (%s) Nv.%d | HP %s %.0f/%.0f | XP %s%s",
 		m.player.Symbol, m.player.Name, m.player.Element, m.player.Stats.Level,
-		hpBar, m.player.Stats.HP, m.player.Stats.MaxHP, xpBar)
+		hpBar, m.player.Stats.HP, m.player.Stats.MaxHP, xpBar, trackerText)
 
 	view := styleHUD.Render(hudText) + "\n"
 
@@ -105,24 +149,28 @@ func (m model) View() string {
 				} else if dist > VisionRadius {
 					line += styleFog.Render(" . ")
 				} else {
+					// 1. Verifica Entidades primeiro (Jogador e Inimigos)
+					hasEnemy := false
+					isMutant := false
+					emoji := ""
+					for _, e := range m.enemies {
+						if e.X == wx && e.Y == wy {
+							hasEnemy = true
+							emoji = e.Symbol
+							isMutant = strings.Contains(e.Name, "Tóxico")
+							break
+						}
+					}
+
 					if wx == m.playerX && wy == m.playerY {
 						line += stylePlayer.Render(m.player.Symbol + " ")
-					} else if m.grid[wy][wx] == 'E' || m.grid[wy][wx] == 'M' {
-						// Procura o inimigo na lista para pegar o símbolo real
-						emoji := EmojiEnemy
-						for _, e := range m.enemies {
-							if e.X == wx && e.Y == wy {
-								emoji = e.Symbol
-								break
-							}
-						}
-
-						// Se for mutante, usa a cor roxa para o jogador saber de longe!
-						if m.grid[wy][wx] == 'M' {
+					} else if hasEnemy {
+						if isMutant {
 							line += styleMiasma.Render(emoji + " ")
 						} else {
 							line += styleEnemy.Render(emoji + " ")
 						}
+						// 2. Se não houver entidade, renderiza o terreno (grid)
 					} else if m.grid[wy][wx] == TileWall {
 						line += styleWall.Render(EmojiWall)
 					} else if m.grid[wy][wx] == TileMiasma {
@@ -153,6 +201,12 @@ func (m model) View() string {
 			lvlView += fmt.Sprintf(" [%d] %s\n     %s\n\n", i+1, opt.Name(), opt.Description())
 		}
 		view += lipgloss.NewStyle().Padding(2).Foreground(lipgloss.Color("#AF87FF")).Render(lvlView)
+	} else if m.state == StateMilestone {
+		msView := "\n 🌟 MARCO ATINGIDO! ESCOLHA UMA MELHORIA 🌟\n\n"
+		for i, reward := range m.milestoneOptions {
+			msView += fmt.Sprintf(" [%d] %s\n     %s\n\n", i+1, reward.Name, reward.Desc)
+		}
+		view += lipgloss.NewStyle().Padding(2).Foreground(lipgloss.Color("#FFD700")).Render(msView)
 	} else if m.state == StateGameOver {
 		view += "\n\n 💀 VOCÊ MORREU 💀\n (Pressione R para ir ao Menu)"
 	}

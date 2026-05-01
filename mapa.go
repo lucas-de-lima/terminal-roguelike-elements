@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/rand"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -48,67 +50,84 @@ func updateMap(m model, msg tea.KeyMsg) (model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Lógica do Baú
+	// 1. Lógica do Baú
 	if tile == TileChest {
 		xpGain := 40.0 + (float64(m.player.Stats.Level) * 15.0)
 		m.player.Stats.XP += xpGain
-		m.player.Stats.HP = math.Min(m.player.Stats.HP+30, m.player.Stats.MaxHP) // Cura 30 HP
-
+		m.player.Stats.HP = math.Min(m.player.Stats.HP+30, m.player.Stats.MaxHP)
 		m.log = fmt.Sprintf("🎁 Baú! Você recuperou HP e ganhou %.0f XP.", xpGain)
-		m.grid[ny][nx] = TileFloor // O baú some após ser aberto
+		m.grid[ny][nx] = TileFloor
 		m.playerX, m.playerY = nx, ny
-
 		return checkLevelUp(m), nil
 	}
 
-	// Lógica de Combate ('E' normal, 'M' mutante)
-	if tile == 'E' || tile == 'M' {
-		m.state = StateCombat
-		isMutant := (tile == 'M')
+	// 2. Colisão Dinâmica de Combate (Procura na Lista)
+	for i, e := range m.enemies {
+		if e.X == nx && e.Y == ny {
+			m.state = StateCombat
+			m.enemy = e
+			m.enemies = append(m.enemies[:i], m.enemies[i+1:]...) // Remove do mapa
+			m.playerX, m.playerY = nx, ny
 
-		// 1. Procura qual inimigo está nesta exata coordenada
-		var foundEnemy *Character
-		var foundIdx int
-		for i, e := range m.enemies {
-			if e.X == nx && e.Y == ny {
-				foundEnemy = e
-				foundIdx = i
-				break
+			if strings.Contains(e.Name, "Tóxico") {
+				m.log = fmt.Sprintf("☣️ COMBATE TÓXICO! %s atacou!", m.enemy.Name)
+			} else {
+				m.log = fmt.Sprintf("⚔️ COMBATE! %s te ataca!", m.enemy.Name)
 			}
+			return m, nil
 		}
-
-		m.enemy = foundEnemy
-
-		// 2. Remove o inimigo da lista global para ele não existir mais no mapa
-		m.enemies = append(m.enemies[:foundIdx], m.enemies[foundIdx+1:]...)
-
-		// 3. Volta o tile para o chão original
-		if isMutant {
-			m.grid[ny][nx] = TileMiasma
-		} else {
-			m.grid[ny][nx] = TileFloor
-		}
-		m.playerX, m.playerY = nx, ny
-
-		if isMutant {
-			m.log = fmt.Sprintf("☣️ COMBATE TÓXICO! %s atacou!", m.enemy.Name)
-		} else {
-			m.log = fmt.Sprintf("⚔️ COMBATE! %s te ataca!", m.enemy.Name)
-		}
-		return m, nil
 	}
 
-	// Lógica de andar e Miasma
+	// 3. Atualiza Jogador e Miasma
 	m.playerX, m.playerY = nx, ny
-
 	if tile == TileMiasma {
-		m.player.Stats.HP -= 1 // Dano contínuo
+		m.player.Stats.HP -= 1
 		m.log = "☣️ O Miasma queima sua pele! (-1 HP)"
 		if m.player.Stats.HP <= 0 {
 			m.state = StateGameOver
 		}
 	} else {
 		m.log = "Avançando pelas masmorras..."
+	}
+
+	// 4. INTELIGÊNCIA ARTIFICIAL: Patrulha dos Monstros
+	for _, e := range m.enemies {
+		// 40% de chance de andar quando você anda
+		if rand.Float64() < 0.4 {
+			edx, edy := 0, 0
+			switch rand.Intn(4) {
+			case 0:
+				edy = -1
+			case 1:
+				edy = 1
+			case 2:
+				edx = -1
+			case 3:
+				edx = 1
+			}
+
+			enx, eny := e.X+edx, e.Y+edy
+
+			// Checa limites do mundo
+			if enx >= 0 && enx < MapW && eny >= 0 && eny < MapH {
+				targetTile := m.grid[eny][enx]
+
+				// Monstro não entra na parede, em baú e não sobrepõe o jogador
+				if targetTile != TileWall && targetTile != TileChest && !(enx == m.playerX && eny == m.playerY) {
+					// Impede dois monstros no mesmo tile
+					occupied := false
+					for _, other := range m.enemies {
+						if other.X == enx && other.Y == eny {
+							occupied = true
+							break
+						}
+					}
+					if !occupied {
+						e.X, e.Y = enx, eny // Anda!
+					}
+				}
+			}
+		}
 	}
 
 	return m, nil

@@ -11,10 +11,20 @@ func startGame(classIndex, elementIndex int) model {
 	element := AvailableElements[elementIndex].Name
 
 	m.player = &Character{
-		Name:    c.Name,
-		Symbol:  c.Symbol,
-		Stats:   Stats{MaxHP: c.HP, HP: c.HP, Str: c.Str, Int: c.Int, Level: 1, XP: 0, NextXP: 50},
-		Skills:  []Skill{&HeavyStrike{BaseSkill{name: "Ataque Base", level: 1}}},
+		Name:   c.Name,
+		Symbol: c.Symbol,
+		Stats: Stats{
+			MaxHP:          c.HP,
+			HP:             c.HP,
+			Str:            c.Str,
+			Int:            c.Int,
+			CritChance:     c.CritChance,
+			CritMultiplier: c.CritMultiplier,
+			Level:          1,
+			XP:             0,
+			NextXP:         50,
+		},
+		Skills:  []Skill{&GolpeRapido{BaseSkill{name: "Golpe Rápido", level: 1, element: "Qualquer"}}},
 		Element: element,
 	}
 
@@ -63,21 +73,15 @@ func startGame(classIndex, elementIndex int) model {
 
 		if tileAtual == TileFloor || tileAtual == TileMiasma {
 			isMutant := (tileAtual == TileMiasma)
-
-			// Gera o inimigo e anota onde ele está
 			enemy := generateEnemy(m.player.Stats.Level, isMutant)
 			enemy.X = ex
 			enemy.Y = ey
 			m.enemies = append(m.enemies, enemy)
-
-			// Marca no grid
-			if isMutant {
-				m.grid[ey][ex] = 'M'
-			} else {
-				m.grid[ey][ex] = 'E'
-			}
+			// NÃO colocamos 'E' ou 'M' no grid - os inimigos ficam desacoplados
 		}
 	}
+
+	m.totalEnemies = len(m.enemies) // Salva o total gerado!
 
 	m.playerX, m.playerY = sx, sy
 	m.log = "A jornada começa. Cuidado com as zonas roxas!"

@@ -11,22 +11,25 @@ const (
 	StateMap
 	StateCombat
 	StateLevelUp
+	StateMilestone
 	StateGameOver
 )
 
 type model struct {
-	state        GameState
-	menuCursor   int
-	menuStep     int // 0 para Classe, 1 para Elemento
-	chosenClass  int // Salva a classe escolhida na primeira etapa
-	grid         [MapH][MapW]rune
-	enemies      []*Character
-	playerX      int
-	playerY      int
-	player       *Character
-	enemy        *Character
-	log          string
-	levelOptions []Skill
+	state            GameState
+	menuCursor       int
+	menuStep         int // 0 para Classe, 1 para Elemento
+	chosenClass      int // Salva a classe escolhida na primeira etapa
+	grid             [MapH][MapW]rune
+	enemies          []*Character
+	totalEnemies     int // Guarda o total inicial para a Bússola
+	playerX          int
+	playerY          int
+	player           *Character
+	enemy            *Character
+	log              string
+	levelOptions     []Skill
+	milestoneOptions []StatReward
 }
 
 func initialModel() model {
@@ -92,6 +95,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return updateCombat(m, msg)
 		case StateLevelUp:
 			return updateLevelUp(m, msg)
+		case StateMilestone:
+			return updateMilestone(m, msg)
 		case StateGameOver:
 			if msg.String() == "r" {
 				return initialModel(), nil
