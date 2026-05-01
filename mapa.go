@@ -65,9 +65,24 @@ func updateMap(m model, msg tea.KeyMsg) (model, tea.Cmd) {
 	if tile == 'E' || tile == 'M' {
 		m.state = StateCombat
 		isMutant := (tile == 'M')
-		m.enemy = generateEnemy(m.player.Stats.Level, isMutant)
 
-		// Volta o tile para o chão original
+		// 1. Procura qual inimigo está nesta exata coordenada
+		var foundEnemy *Character
+		var foundIdx int
+		for i, e := range m.enemies {
+			if e.X == nx && e.Y == ny {
+				foundEnemy = e
+				foundIdx = i
+				break
+			}
+		}
+
+		m.enemy = foundEnemy
+
+		// 2. Remove o inimigo da lista global para ele não existir mais no mapa
+		m.enemies = append(m.enemies[:foundIdx], m.enemies[foundIdx+1:]...)
+
+		// 3. Volta o tile para o chão original
 		if isMutant {
 			m.grid[ny][nx] = TileMiasma
 		} else {
@@ -76,7 +91,7 @@ func updateMap(m model, msg tea.KeyMsg) (model, tea.Cmd) {
 		m.playerX, m.playerY = nx, ny
 
 		if isMutant {
-			m.log = fmt.Sprintf("☣️ COMBATE PERIGOSO! %s atacou!", m.enemy.Name)
+			m.log = fmt.Sprintf("☣️ COMBATE TÓXICO! %s atacou!", m.enemy.Name)
 		} else {
 			m.log = fmt.Sprintf("⚔️ COMBATE! %s te ataca!", m.enemy.Name)
 		}

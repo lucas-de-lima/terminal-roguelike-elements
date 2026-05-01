@@ -7,25 +7,42 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// Definição de moldes de inimigos
+type EnemyDef struct {
+	Name    string
+	Symbol  string
+	Element string
+}
+
+var EnemyPool = []EnemyDef{
+	{"Slime Aquático", "🐸", ElemWater},
+	{"Goblin das Chamas", "👺", ElemFire},
+	{"Golem de Granito", "🪨", ElemEarth},
+	{"Harpia Cortante", "🦅", ElemWind},
+	{"Espírito Faísca", "🌩️", ElemLight},
+}
+
 func generateEnemy(playerLvl int, isMutant bool) *Character {
 	lvl := playerLvl
-	nome := fmt.Sprintf("Monstro Nv.%d", lvl)
-	element := "Neutral"
+	baseEnemy := EnemyPool[rand.Intn(len(EnemyPool))]
 
-	// Monstro do miasma ganha 2 níveis grátis
+	nome := baseEnemy.Name
+	elemento := baseEnemy.Element // <--- MANTÉM O ELEMENTO NATURAL!
+
+	// Mutantes ganham nível, mas continuam vulneráveis às fraquezas normais
 	if isMutant {
 		lvl += 2
-		nome = fmt.Sprintf("Aberração Tóxica Nv.%d", lvl)
-		element = "Poison"
+		nome = nome + " (Tóxico)"
 	}
 
 	scale := float64(lvl)
 	hp := 20.0 * (1 + scale*0.3)
+
 	return &Character{
 		Name:    nome,
-		Symbol:  EmojiEnemy,
+		Symbol:  baseEnemy.Symbol,
+		Element: elemento,
 		Stats:   Stats{MaxHP: hp, HP: hp, Str: 2.0 * (1 + scale*0.2)},
-		Element: element,
 	}
 }
 
@@ -46,9 +63,18 @@ func updateCombat(m model, msg tea.KeyMsg) (model, tea.Cmd) {
 		return checkLevelUp(m), nil
 	}
 
-	dmg := m.enemy.Stats.Str * (0.8 + rand.Float64()*0.4)
+	// Turno do Inimigo
+	enemyElemMult := getElementalMultiplier(m.enemy.Element, m.player.Element)
+	dmg := m.enemy.Stats.Str * (0.8 + rand.Float64()*0.4) * enemyElemMult
+
 	m.player.Stats.HP -= dmg
-	m.log += fmt.Sprintf("\n💀 %s atacou: -%.0f HP", m.enemy.Symbol, dmg)
+
+	feedbackInimigo := ""
+	if enemyElemMult > 1.0 {
+		feedbackInimigo = " (Dano Crítico!)"
+	}
+
+	m.log += fmt.Sprintf("\n💀 %s atacou: -%.0f HP%s", m.enemy.Symbol, dmg, feedbackInimigo)
 
 	if m.player.Stats.HP <= 0 {
 		m.state = StateGameOver

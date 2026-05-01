@@ -20,6 +20,7 @@ type model struct {
 	menuStep     int // 0 para Classe, 1 para Elemento
 	chosenClass  int // Salva a classe escolhida na primeira etapa
 	grid         [MapH][MapW]rune
+	enemies      []*Character
 	playerX      int
 	playerY      int
 	player       *Character

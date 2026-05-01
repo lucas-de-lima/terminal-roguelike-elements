@@ -62,8 +62,16 @@ func startGame(classIndex, elementIndex int) model {
 		tileAtual := m.grid[ey][ex]
 
 		if tileAtual == TileFloor || tileAtual == TileMiasma {
-			// Se nascer no Miasma, será um monstro mutante ('M' em vez de 'E')
-			if tileAtual == TileMiasma {
+			isMutant := (tileAtual == TileMiasma)
+
+			// Gera o inimigo e anota onde ele está
+			enemy := generateEnemy(m.player.Stats.Level, isMutant)
+			enemy.X = ex
+			enemy.Y = ey
+			m.enemies = append(m.enemies, enemy)
+
+			// Marca no grid
+			if isMutant {
 				m.grid[ey][ex] = 'M'
 			} else {
 				m.grid[ey][ex] = 'E'

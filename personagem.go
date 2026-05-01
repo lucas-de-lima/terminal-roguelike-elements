@@ -92,6 +92,7 @@ type Character struct {
 	Stats   Stats
 	Skills  []Skill
 	Element string
+	X, Y    int
 }
 
 // Helper para gerenciar Level Up (Agora usado pelo Baú e pelo Combate)

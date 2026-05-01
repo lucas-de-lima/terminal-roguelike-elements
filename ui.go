@@ -85,8 +85,8 @@ func (m model) View() string {
 	hpBar := progressBar(15, m.player.Stats.HP, m.player.Stats.MaxHP, lipgloss.Color("#FF0055"))
 	xpBar := progressBar(10, m.player.Stats.XP, m.player.Stats.NextXP, lipgloss.Color("#AF87FF"))
 
-	hudText := fmt.Sprintf(" %s %s Nv.%d | HP %s %.0f/%.0f | XP %s",
-		m.player.Symbol, m.player.Name, m.player.Stats.Level,
+	hudText := fmt.Sprintf(" %s %s (%s) Nv.%d | HP %s %.0f/%.0f | XP %s",
+		m.player.Symbol, m.player.Name, m.player.Element, m.player.Stats.Level,
 		hpBar, m.player.Stats.HP, m.player.Stats.MaxHP, xpBar)
 
 	view := styleHUD.Render(hudText) + "\n"
@@ -107,8 +107,22 @@ func (m model) View() string {
 				} else {
 					if wx == m.playerX && wy == m.playerY {
 						line += stylePlayer.Render(m.player.Symbol + " ")
-					} else if m.grid[wy][wx] == 'E' || m.grid[wy][wx] == 'M' { // Correção aplicada aqui!
-						line += styleEnemy.Render(EmojiEnemy + " ")
+					} else if m.grid[wy][wx] == 'E' || m.grid[wy][wx] == 'M' {
+						// Procura o inimigo na lista para pegar o símbolo real
+						emoji := EmojiEnemy
+						for _, e := range m.enemies {
+							if e.X == wx && e.Y == wy {
+								emoji = e.Symbol
+								break
+							}
+						}
+
+						// Se for mutante, usa a cor roxa para o jogador saber de longe!
+						if m.grid[wy][wx] == 'M' {
+							line += styleMiasma.Render(emoji + " ")
+						} else {
+							line += styleEnemy.Render(emoji + " ")
+						}
 					} else if m.grid[wy][wx] == TileWall {
 						line += styleWall.Render(EmojiWall)
 					} else if m.grid[wy][wx] == TileMiasma {

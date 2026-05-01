@@ -30,19 +30,49 @@ func (b *BaseSkill) Element() string { return b.element }
 
 type HeavyStrike struct{ BaseSkill }
 
-func (s *HeavyStrike) Cast(c, t *Character) string {
-	dmg := c.Stats.Str * (1.0 + (0.2 * float64(s.level-1)))
-	t.Stats.HP -= dmg
-	return fmt.Sprintf("💥 Golpe: -%.0f HP", dmg)
+func (s *HeavyStrike) Cast(caster, target *Character) string {
+	// 1. Calcula o multiplicador elemental
+	elemMult := getElementalMultiplier(caster.Element, target.Element)
+
+	// 2. Aplica o multiplicador no dano final
+	dmgBase := caster.Stats.Str * (1.0 + (0.2 * float64(s.level-1)))
+	dmgFinal := dmgBase * elemMult
+
+	target.Stats.HP -= dmgFinal
+
+	// 3. Adiciona um "Flavor Text" para o jogador saber que deu certo!
+	feedback := ""
+	if elemMult > 1.3 {
+		feedback = " (SUPER EFETIVO! +30%)"
+	} else if elemMult < 1.0 {
+		feedback = " (Resistido... -30%)"
+	}
+
+	return fmt.Sprintf("💥 Golpe causou %.0f dano!%s", dmgFinal, feedback)
 }
 func (s *HeavyStrike) Description() string { return "Dano físico massivo." }
 
 type Fireball struct{ BaseSkill }
 
-func (s *Fireball) Cast(c, t *Character) string {
-	dmg := c.Stats.Int * (2.5 + (0.5 * float64(s.level-1)))
-	t.Stats.HP -= dmg
-	return fmt.Sprintf("🔥 Magia: -%.0f HP", dmg)
+func (s *Fireball) Cast(caster, target *Character) string {
+	// 1. Calcula o multiplicador elemental
+	elemMult := getElementalMultiplier(caster.Element, target.Element)
+
+	// 2. Aplica o multiplicador no dano final
+	dmgBase := caster.Stats.Int * (2.5 + (0.5 * float64(s.level-1)))
+	dmgFinal := dmgBase * elemMult
+
+	target.Stats.HP -= dmgFinal
+
+	// 3. Adiciona um "Flavor Text" para o jogador saber que deu certo!
+	feedback := ""
+	if elemMult > 1.3 {
+		feedback = " (SUPER EFETIVO! +30%)"
+	} else if elemMult < 1.0 {
+		feedback = " (Resistido... -30%)"
+	}
+
+	return fmt.Sprintf("🔥 Magia causou %.0f dano!%s", dmgFinal, feedback)
 }
 func (s *Fireball) Description() string { return "Alto dano elemental." }
 
