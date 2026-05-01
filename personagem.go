@@ -66,10 +66,14 @@ func getElementalMultiplier(atkElem, defElem string) float64 {
 type Stats struct {
 	MaxHP, HP      float64
 	Str, Int       float64
-	CritChance     float64 // Ex: 0.10 para 10%
-	CritMultiplier float64 // Ex: 1.5 para +50% de dano
+	CritChance     float64
+	CritMultiplier float64
 	Level          int
 	XP, NextXP     float64
+	Gold           int
+	Potions        int
+	MaxPotions     int
+	PotionPower    float64
 }
 
 type ClassDef struct {

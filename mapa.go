@@ -86,19 +86,29 @@ func generateFloor(m *model) {
 
 	// 6. Inimigos Escalonados pelo Andar!
 	m.enemies = []*Character{}
-	qtdInimigos := 25 + (m.floor * 5)
 
+	// 1. Spawna 1 Boss (Garantido)
+	bx, by := rand.Intn(MapW-2)+1, rand.Intn(MapH-2)+1
+	boss := generateEnemy(m.player.Stats.Level+m.floor, false, TypeBoss)
+	boss.X, boss.Y = bx, by
+	m.enemies = append(m.enemies, boss)
+
+	// 2. Spawna Mini-Bosses (1 a cada 2 andares)
+	for i := 0; i < m.floor/2; i++ {
+		mx, my := rand.Intn(MapW-2)+1, rand.Intn(MapH-2)+1
+		mini := generateEnemy(m.player.Stats.Level+m.floor, false, TypeMiniBoss)
+		mini.X, mini.Y = mx, my
+		m.enemies = append(m.enemies, mini)
+	}
+
+	// 3. Spawna o resto dos inimigos comuns
+	qtdInimigos := 20 + (m.floor * 4)
 	for i := 0; i < qtdInimigos; i++ {
 		ex, ey := rand.Intn(MapW-2)+1, rand.Intn(MapH-2)+1
-		tileAtual := newGrid[ey][ex]
-		if tileAtual == TileFloor || tileAtual == TileMiasma {
-			isMutant := (tileAtual == TileMiasma)
-			enemyLvl := m.player.Stats.Level + m.floor - 1
-			enemy := generateEnemy(enemyLvl, isMutant)
-			enemy.X = ex
-			enemy.Y = ey
-			m.enemies = append(m.enemies, enemy)
-		}
+		isMutant := (newGrid[ey][ex] == TileMiasma)
+		enemy := generateEnemy(m.player.Stats.Level+m.floor, isMutant, TypeNormal)
+		enemy.X, enemy.Y = ex, ey
+		m.enemies = append(m.enemies, enemy)
 	}
 
 	m.grid = newGrid
@@ -132,6 +142,21 @@ func updateMap(m model, msg tea.KeyMsg) (model, tea.Cmd) {
 		return m, nil
 	}
 
+	// 0. Curar com Poção (Tecla 'h')
+	if msg.String() == "h" {
+		if m.player.Stats.Potions > 0 && m.player.Stats.HP < m.player.Stats.MaxHP {
+			m.player.Stats.Potions--
+			cura := m.player.Stats.PotionPower
+			m.player.Stats.HP = math.Min(m.player.Stats.HP+cura, m.player.Stats.MaxHP)
+			m.log = fmt.Sprintf("🧪 Bebeu poção! Curou %.0f HP. Restam: %d", cura, m.player.Stats.Potions)
+		} else if m.player.Stats.Potions <= 0 {
+			m.log = "⚠️ Sem poções!"
+		} else {
+			m.log = "Sua vida já está cheia."
+		}
+		return m, nil
+	}
+
 	// 1. Lógica do Baú
 	if tile == TileChest {
 		xpGain := 40.0 + (float64(m.player.Stats.Level) * 15.0)
@@ -145,9 +170,9 @@ func updateMap(m model, msg tea.KeyMsg) (model, tea.Cmd) {
 
 	// 1.5 Lógica do Portal
 	if tile == TilePortal {
-		m.floor++
-		generateFloor(&m)
-		m.log = fmt.Sprintf("🌀 Você desceu para o Andar %d: %s!", m.floor, m.currentBiome.Name)
+		m.state = StateShop
+		m.menuCursor = 0
+		m.log = "Você encontrou o Mercador do Abismo..."
 		return m, nil
 	}
 

@@ -131,9 +131,10 @@ func (m model) View() string {
 	}
 
 	// --- HUD ---
-	hudText := fmt.Sprintf(" Andar %d | %s %s (%s) Nv.%d | HP %s %.0f/%.0f | XP %s%s",
-		m.floor, m.player.Symbol, m.player.Name, m.player.Element, m.player.Stats.Level,
-		hpBar, m.player.Stats.HP, m.player.Stats.MaxHP, xpBar, trackerText)
+	hudText := fmt.Sprintf(" Andar %d | %s %s Nv.%d | HP %s %.0f/%.0f | XP %s | 🪙 %d | 🧪 %d/%d %s",
+		m.floor, m.player.Symbol, m.player.Name, m.player.Stats.Level,
+		hpBar, m.player.Stats.HP, m.player.Stats.MaxHP, xpBar,
+		m.player.Stats.Gold, m.player.Stats.Potions, m.player.Stats.MaxPotions, trackerText)
 
 	view := styleHUD.Render(hudText) + "\n"
 
@@ -214,6 +215,25 @@ func (m model) View() string {
 			msView += fmt.Sprintf(" [%d] %s\n     %s\n\n", i+1, reward.Name, reward.Desc)
 		}
 		view += lipgloss.NewStyle().Padding(2).Foreground(lipgloss.Color("#FFD700")).Render(msView)
+	} else if m.state == StateShop {
+		s := "\n ⛺ O MERCADOR DO ABISMO ⛺\n\n"
+		s += fmt.Sprintf(" Seu Ouro: 🪙 %d\n\n", m.player.Stats.Gold)
+
+		opcoes := []string{
+			"Recarregar Poções (50g)",
+			"Comprar +1 Frasco Máximo (150g)",
+			"Aumentar Potência da Cura (200g)",
+			"Continuar descendo o Abismo",
+		}
+
+		for i, opt := range opcoes {
+			cursor := "  "
+			if m.menuCursor == i {
+				cursor = styleCursor.Render("> ")
+			}
+			s += fmt.Sprintf("%s %s\n", cursor, opt)
+		}
+		view += s + "\n\n" + styleLog.Render(m.log)
 	} else if m.state == StateGameOver {
 		view += "\n\n 💀 VOCÊ MORREU 💀\n (Pressione R para ir ao Menu)"
 	}

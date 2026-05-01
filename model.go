@@ -12,6 +12,7 @@ const (
 	StateCombat
 	StateLevelUp
 	StateMilestone
+	StateShop
 	StateGameOver
 )
 
@@ -99,6 +100,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return updateLevelUp(m, msg)
 		case StateMilestone:
 			return updateMilestone(m, msg)
+		case StateShop:
+			return updateShop(m, msg)
 		case StateGameOver:
 			if msg.String() == "r" {
 				return initialModel(), nil

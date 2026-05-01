@@ -23,6 +23,10 @@ func startGame(classIndex, elementIndex int) model {
 			Level:          1,
 			XP:             0,
 			NextXP:         50,
+			Gold:           0,
+			Potions:        2,
+			MaxPotions:     2,
+			PotionPower:    40.0,
 		},
 		Skills: []Skill{&GolpeRapido{BaseSkill{name: "Ataque Rápido", level: 1, element: "Qualquer"}}},
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -23,27 +24,62 @@ var EnemyPool = []EnemyDef{
 	{"Espírito Faísca", "🌩️", ElemLight},
 }
 
-func generateEnemy(playerLvl int, isMutant bool) *Character {
+var MiniBossPool = []EnemyDef{
+	{"Minotauro Furioso", "🦍", ElemEarth},
+	{"Aranha Viúva", "🕷️", ElemNone},
+	{"Elemental Maior", "🦂", ElemFire},
+}
+
+var BossPool = []EnemyDef{
+	{"Dragão Ancião", "🐉", ElemFire},
+	{"Kraken Abissal", "🦑", ElemWater},
+	{"T-Rex Zumbi", "🦖", ElemNone},
+}
+
+const (
+	TypeNormal = iota
+	TypeMiniBoss
+	TypeBoss
+)
+
+func generateEnemy(playerLvl int, isMutant bool, enemyType int) *Character {
 	lvl := playerLvl
-	baseEnemy := EnemyPool[rand.Intn(len(EnemyPool))]
+
+	var baseEnemy EnemyDef
+	switch enemyType {
+	case TypeBoss:
+		baseEnemy = BossPool[rand.Intn(len(BossPool))]
+		lvl += 5
+	case TypeMiniBoss:
+		baseEnemy = MiniBossPool[rand.Intn(len(MiniBossPool))]
+		lvl += 2
+	default:
+		baseEnemy = EnemyPool[rand.Intn(len(EnemyPool))]
+	}
+
 	nome := baseEnemy.Name
 	elemento := baseEnemy.Element
 
 	if isMutant {
-		lvl += 3 // Mutantes ganham 3 níveis de cara!
+		lvl += 3
 		nome = nome + " (Tóxico)"
 	}
 
-	// Curva de Dificuldade Exponencial!
-	// A cada nível, os monstros ficam 15% mais parrudos.
 	scale := float64(lvl - 1)
 	hp := 25.0 * math.Pow(1.15, scale)
 	str := 3.0 * math.Pow(1.15, scale)
 
-	// O BUFF DO MIASMA: Inimigos ali dentro são mini-chefes
+	if enemyType == TypeBoss {
+		hp *= 3.5
+		str *= 1.8
+	} else if enemyType == TypeMiniBoss {
+		hp *= 2.0
+		str *= 1.3
+	}
+
 	if isMutant {
-		hp *= 1.8  // 80% mais vida
-		str *= 1.4 // 40% mais dano
+		hp *= 1.5
+		str *= 1.3
 	}
 
 	return &Character{
@@ -74,12 +110,27 @@ func updateCombat(m model, msg tea.KeyMsg) (model, tea.Cmd) {
 	if m.enemy.Stats.HP <= 0 {
 		xp := 25.0 * m.enemy.Stats.Str
 		m.player.Stats.XP += xp
-		m.log = fmt.Sprintf("🏆 Venceu! +%.0f XP", xp)
 
-		// GATILHO DO PORTAL
-		if len(m.enemies) == 0 {
+		goldDrop := 10 + rand.Intn(10)
+		if strings.Contains(m.enemy.Name, "Dragão") || strings.Contains(m.enemy.Name, "Kraken") || strings.Contains(m.enemy.Name, "T-Rex") {
+			goldDrop = 150 + rand.Intn(50)
+		}
+		m.player.Stats.Gold += goldDrop
+
+		m.log = fmt.Sprintf("🏆 Venceu! +%.0f XP | +%d Ouro", xp, goldDrop)
+
+		// Verifica se há Boss vivo
+		hasBoss := false
+		for _, e := range m.enemies {
+			if strings.Contains(e.Name, "Dragão") || strings.Contains(e.Name, "Kraken") || strings.Contains(e.Name, "T-Rex") {
+				hasBoss = true
+				break
+			}
+		}
+
+		if !hasBoss && len(m.enemies) < m.totalEnemies/2 {
 			m.grid[m.playerY][m.playerX] = TilePortal
-			m.log += " 🌀 A área está limpa! Um PORTAL se abriu sob você."
+			m.log += " 🌀 O Mestre deste andar caiu. Um PORTAL apareceu."
 		}
 
 		return checkLevelUp(m), nil
